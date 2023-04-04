@@ -33,9 +33,8 @@ namespace Hero
             foreach (var inputSource in _inputSources)
             {
                 if (inputSource.Direction == Vector2.zero)
-                {
                     continue;
-                }
+                
                 
                 return inputSource.Direction;
             }
