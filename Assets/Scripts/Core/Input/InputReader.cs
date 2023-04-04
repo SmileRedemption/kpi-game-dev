@@ -1,11 +1,12 @@
 using Core.Enums;
+using Hero;
 using UnityEngine;
 
 namespace Core.Input
 {
     public class InputReader : MonoBehaviour
     {
-        [SerializeField] private Hero _hero;
+        [SerializeField] private HeroEntity _hero;
 
         private Vector2 _direction;
     
