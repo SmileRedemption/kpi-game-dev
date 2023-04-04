@@ -1,4 +1,6 @@
 using System;
+using Core.Camera;
+using Core.Enums;
 using UnityEngine;
 
 
@@ -17,12 +19,13 @@ public class Hero : MonoBehaviour
     [Header("Jump")]
     [SerializeField] private float _jumpForce;
     [SerializeField] private float _gravityScale;
-
+    [Header("Cameras")] 
+    [SerializeField] private CameraPairWithDirection _cameras;
+    
     private Rigidbody2D _rigidbody;
-    private bool _isLookRight;
+    private Direction _direction;
     private bool _isJump;
     private float _sizeModificator;
-    
     private float _positionOfYWhenJump;
 
     private void Start()
@@ -99,13 +102,13 @@ public class Hero : MonoBehaviour
 
     private void Flip(float directionX)
     {
-        switch (_isLookRight)
+        if (_direction == Direction.Left && directionX > 0 || _direction == Direction.Right && directionX < 0)
         {
-            case true when directionX > 0:
-            case false when directionX < 0:
-                transform.Rotate(0, 180, 0);
-                _isLookRight = !_isLookRight;
-                break;
+            transform.Rotate(0, 180, 0);
+            _direction = _direction == Direction.Right ? Direction.Left : Direction.Right;
+            
+            foreach (var (direction, cinemachineVirtualCamera) in _cameras.DirectionalPairCamera)
+                cinemachineVirtualCamera.enabled = direction == _direction;
         }
     }
 
