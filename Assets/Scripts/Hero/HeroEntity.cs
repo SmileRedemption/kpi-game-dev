@@ -9,24 +9,37 @@ namespace Hero
     {
         [Header("Animation")] 
         [SerializeField] private AnimationController _animationController;
-
-        [SerializeField] private HeroData _heroData;
+        [Header("Speed")]
+        [SerializeField] private float _speedOfMovement;
+        [Header("Vertical Movement")]
+        [Header("Size Change")]
+        [SerializeField] private float _minSize;
+        [SerializeField] private float _maxSize;
+        [Header("Position Clamp")]
+        [SerializeField] private float _minPositionY;
+        [SerializeField] private float _maxPositionY;
         [Header("Jump")]
         [SerializeField] private float _jumpForce;
         [SerializeField] private float _gravityScale;
         [Header("Cameras")] 
         [SerializeField] private CameraPairWithDirection _cameras;
-
-        private HeroMovement _movement;
+    
         private Rigidbody2D _rigidbody;
+        private Direction _direction;
         private bool _isJump;
+        private float _sizeModificator;
         private float _positionOfYWhenJump;
+        private bool _isMoveHorizontal;
+        private bool _isMoveVertical;
+
 
         private void Start()
         {
             _rigidbody = GetComponent<Rigidbody2D>();
-            _movement = new HeroMovement(_rigidbody, _heroData, Direction.Right);
-            _movement.ResizeScale();
+            var positionDelta = _maxPositionY - _minPositionY;
+            var sizeDelta = _maxSize - _minSize;
+            _sizeModificator = sizeDelta / positionDelta;
+            ResizeScale();
         }
 
         private void Update()
@@ -35,25 +48,19 @@ namespace Hero
                 UpdateJump();
             
             UpdateAnimation();
-            UpdateCameras();
         }
 
         private void UpdateAnimation()
         {
             _animationController.PlayAnimation(AnimationType.Idle, true);
-            _animationController.PlayAnimation(AnimationType.Walk, _movement.IsMove);
+            _animationController.PlayAnimation(AnimationType.Walk, _isMoveHorizontal || _isMoveVertical);
             _animationController.PlayAnimation(AnimationType.Jump, _isJump);
-        }
-
-        private void UpdateCameras()
-        {
-            foreach (var cameraPair in _cameras.DirectionalPairCamera)
-                cameraPair.Value.enabled = cameraPair.Key == _movement.Direction;
         }
 
         public void Move(Vector2 direction)
         {
-           _movement.Move(direction);
+            MoveHorizontal(direction.x);
+            MoveVertical(direction.y);
         }
 
         public void Jump()
@@ -65,6 +72,70 @@ namespace Hero
             _rigidbody.AddForce(Vector2.up * _jumpForce);
             _rigidbody.gravityScale = _gravityScale;
             _positionOfYWhenJump = transform.position.y;
+        }
+
+        private void MoveVertical(float directionY)
+        {
+            if (directionY == 0)
+                _isMoveVertical = false;
+
+            else
+                _isMoveVertical = true;
+            
+            
+            if (_isJump)
+                return;
+            
+            var velocity = _rigidbody.velocity;
+            velocity.y = directionY * _speedOfMovement;
+            _rigidbody.velocity = velocity;
+
+            if (directionY == 0)
+                return;
+
+            ClampPosition();
+            ResizeScale();
+        }
+
+        private void MoveHorizontal(float directionX)
+        {
+            if (directionX == 0)
+                _isMoveHorizontal = false;
+            else
+                _isMoveHorizontal = true;
+            
+            Flip(directionX);
+            
+            var velocity = _rigidbody.velocity;
+            velocity.x = directionX * _speedOfMovement;
+            _rigidbody.velocity = velocity;
+        }
+
+        private void ResizeScale()
+        {
+            var heroTransform = transform;
+            var deltaBetweenHeroMaxPositionY = _maxPositionY - heroTransform.position.y;
+            var currentSizeModificator = _minSize + _sizeModificator * deltaBetweenHeroMaxPositionY;
+
+            heroTransform.localScale = Vector2.one * currentSizeModificator;
+        }
+
+        private void ClampPosition()
+        {
+            var verticalPosition = Mathf.Clamp(transform.position.y, _minPositionY, _maxPositionY);
+            _rigidbody.position = new Vector2(_rigidbody.position.x, verticalPosition);
+        }
+
+        private void Flip(float directionX)
+        {
+            if (_direction == Direction.Left && directionX > 0 || _direction == Direction.Right && directionX < 0)
+            {
+                transform.Rotate(0, 180, 0);
+                _direction = _direction == Direction.Right ? Direction.Left : Direction.Right;
+            
+                foreach (var (direction, cinemachineVirtualCamera) in _cameras.DirectionalPairCamera)
+                    cinemachineVirtualCamera.enabled = direction == _direction;
+            }
         }
 
         private void UpdateJump()
